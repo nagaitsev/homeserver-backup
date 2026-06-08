@@ -220,14 +220,14 @@ load_passphrase(){
     return 0
   fi
 
-  if [[ -t 0 ]]; then
-    read -r -s -p "Encrypted bundle passphrase: " BUNDLE_PASSPHRASE
-    echo
+  if [[ -r /dev/tty ]]; then
+    read -r -s -p "Encrypted bundle passphrase: " BUNDLE_PASSPHRASE < /dev/tty
+    echo > /dev/tty
     return 0
   fi
 
   echo "encrypted bundle requires passphrase"
-  echo "use --bundle-passphrase, --bundle-passphrase-file, or run interactively"
+  echo "use --bundle-passphrase, --bundle-passphrase-file, or run from an interactive terminal with /dev/tty"
   exit 1
 }
 
