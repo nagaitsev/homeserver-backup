@@ -37,6 +37,8 @@ cleanup(){
 trap cleanup EXIT
 
 load_passphrase(){
+  local passphrase_confirm=""
+
   if [[ -n "$PASSPHRASE_FILE" ]]; then
     PASSPHRASE_VALUE="$(tr -d '\r\n' < "$PASSPHRASE_FILE")"
   fi
@@ -46,6 +48,12 @@ load_passphrase(){
   if [[ -t 0 ]]; then
     read -r -s -p "Bundle passphrase: " PASSPHRASE_VALUE
     echo
+    read -r -s -p "Confirm bundle passphrase: " passphrase_confirm
+    echo
+    if [[ "$PASSPHRASE_VALUE" != "$passphrase_confirm" ]]; then
+      echo "passphrase confirmation does not match"
+      exit 1
+    fi
     return 0
   fi
   echo "passphrase required"
