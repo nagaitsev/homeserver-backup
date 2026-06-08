@@ -9,6 +9,7 @@ BUNDLE_NAME="recovery-bundle-$(date +%F_%H-%M-%S)"
 RCLONE_CONF_SOURCE="/root/.config/rclone/rclone.conf"
 REMOTE_DIR="yadisk:server_backup/recovery"
 PUBLIC_BOOTSTRAP_URL=""
+STABLE_BUNDLE_BASENAME="recovery-bundle-latest"
 PASSPHRASE_FILE=""
 PASSPHRASE_VALUE="${BUNDLE_PASSPHRASE:-}"
 MODE_EXAMPLE="disaster"
@@ -33,6 +34,7 @@ Optional:
   --rclone-conf PATH            rclone.conf to include in the encrypted bundle. Default: /root/.config/rclone/rclone.conf
   --remote-dir REMOTE           Remote directory. Default: yadisk:server_backup/recovery
   --public-bootstrap-url URL    Public URL to bootstrap.sh on GitHub or your web server
+  --stable-bundle-basename NAME Stable alias base name. Default: recovery-bundle-latest
   --passphrase-file PATH        File containing gpg passphrase
   --passphrase VALUE            Passphrase directly (less safe in shell history)
   --mode-example MODE           Mode shown in the printed example command. Default: disaster
@@ -67,6 +69,7 @@ parse_args(){
       --rclone-conf) RCLONE_CONF_SOURCE="$2"; shift 2 ;;
       --remote-dir) REMOTE_DIR="$2"; shift 2 ;;
       --public-bootstrap-url) PUBLIC_BOOTSTRAP_URL="$2"; shift 2 ;;
+      --stable-bundle-basename) STABLE_BUNDLE_BASENAME="$2"; shift 2 ;;
       --passphrase-file) PASSPHRASE_FILE="$2"; shift 2 ;;
       --passphrase) PASSPHRASE_VALUE="$2"; shift 2 ;;
       --mode-example) MODE_EXAMPLE="$2"; shift 2 ;;
@@ -132,6 +135,9 @@ upload_artifacts(){
   local encrypted="$OUTPUT_DIR/${BUNDLE_NAME}.tar.gz.gpg"
   local manifest="$OUTPUT_DIR/${BUNDLE_NAME}.manifest.txt"
   local verify="$OUTPUT_DIR/${BUNDLE_NAME}.verify.txt"
+  local stable_encrypted="$REMOTE_DIR/${STABLE_BUNDLE_BASENAME}.tar.gz.gpg"
+  local stable_manifest="$REMOTE_DIR/${STABLE_BUNDLE_BASENAME}.manifest.txt"
+  local stable_verify="$REMOTE_DIR/${STABLE_BUNDLE_BASENAME}.verify.txt"
 
   [[ -f "$encrypted" ]] || { echo "missing $encrypted"; exit 1; }
   [[ -f "$manifest" ]] || { echo "missing $manifest"; exit 1; }
@@ -141,15 +147,23 @@ upload_artifacts(){
   rclone copyto "$encrypted" "$REMOTE_DIR/${BUNDLE_NAME}.tar.gz.gpg"
   rclone copyto "$manifest" "$REMOTE_DIR/${BUNDLE_NAME}.manifest.txt"
   rclone copyto "$verify" "$REMOTE_DIR/${BUNDLE_NAME}.verify.txt"
+  rclone copyto "$encrypted" "$stable_encrypted"
+  rclone copyto "$manifest" "$stable_manifest"
+  rclone copyto "$verify" "$stable_verify"
 }
 
-make_public_link(){
-  local remote_file="$REMOTE_DIR/${BUNDLE_NAME}.tar.gz.gpg"
+make_public_folder_link(){
+  rclone link "$REMOTE_DIR" | tail -n 1
+}
+
+make_public_file_link(){
+  local remote_file="$REMOTE_DIR/${STABLE_BUNDLE_BASENAME}.tar.gz.gpg"
   rclone link "$remote_file" | tail -n 1
 }
 
 print_result(){
-  local public_link="$1"
+  local public_folder_link="$1"
+  local public_file_link="$2"
 
   cat <<EOF
 
@@ -161,14 +175,20 @@ Local artifacts:
   $OUTPUT_DIR/${BUNDLE_NAME}.manifest.txt
   $OUTPUT_DIR/${BUNDLE_NAME}.verify.txt
 
-Yandex public link:
-  $public_link
+Yandex stable public folder link:
+  $public_folder_link
+
+Yandex stable public file link:
+  $public_file_link
+
+Stable bundle path inside public folder:
+  /${STABLE_BUNDLE_BASENAME}.tar.gz.gpg
 
 Restore command (${MODE_EXAMPLE}):
-  curl -fsSL $PUBLIC_BOOTSTRAP_URL | sudo bash -s -- --encrypted-bundle-url \"$public_link\" --mode $MODE_EXAMPLE
+  curl -fsSL $PUBLIC_BOOTSTRAP_URL | sudo bash -s -- --encrypted-bundle-url \"$public_folder_link\" --encrypted-bundle-path \"/${STABLE_BUNDLE_BASENAME}.tar.gz.gpg\" --mode $MODE_EXAMPLE
 
 Restore command (test):
-  curl -fsSL $PUBLIC_BOOTSTRAP_URL | sudo bash -s -- --encrypted-bundle-url \"$public_link\" --mode test --test-ip $TEST_IP_EXAMPLE
+  curl -fsSL $PUBLIC_BOOTSTRAP_URL | sudo bash -s -- --encrypted-bundle-url \"$public_folder_link\" --encrypted-bundle-path \"/${STABLE_BUNDLE_BASENAME}.tar.gz.gpg\" --mode test --test-ip $TEST_IP_EXAMPLE
 
 Verification report:
   cat $OUTPUT_DIR/${BUNDLE_NAME}.verify.txt
@@ -192,7 +212,7 @@ main(){
   prepare_source
   build_bundle
   upload_artifacts
-  print_result "$(make_public_link)"
+  print_result "$(make_public_folder_link)" "$(make_public_file_link)"
 }
 
 main "$@"

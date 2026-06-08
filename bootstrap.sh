@@ -10,6 +10,7 @@ RUNBOOK_FILE="/root/HOMESERVER_BACKUP_RESTORE.md"
 
 BUNDLE_URL=""
 ENCRYPTED_BUNDLE_URL=""
+ENCRYPTED_BUNDLE_PATH=""
 MODE="disaster"
 SNAPSHOT_ID=""
 ENV_URL=""
@@ -37,6 +38,7 @@ Usage:
 One of:
   --bundle-url URL              Base URL where recovery files are hosted.
   --encrypted-bundle-url URL    URL to encrypted recovery bundle (.tar.gz.gpg)
+  --encrypted-bundle-path PATH  Path to file inside a Yandex public folder link
 
 Optional:
   --mode disaster|test          Restore mode. Default: disaster
@@ -120,12 +122,16 @@ PY
 
 resolve_download_url(){
   local url="$1"
+  local public_path="${2:-}"
   local encoded api_url resolved
 
   case "$url" in
     https://yadi.sk/*|https://disk.yandex.*/*|https://yandex.ru/d/*|https://disk.yandex.ru/*)
       encoded="$(urlencode "$url")"
       api_url="https://cloud-api.yandex.net/v1/disk/public/resources/download?public_key=${encoded}"
+      if [[ -n "$public_path" ]]; then
+        api_url="${api_url}&path=$(urlencode "$public_path")"
+      fi
       resolved="$(curl -fsSL "$api_url" | jq -r '.href // empty')"
       if [[ -z "$resolved" ]]; then
         echo "failed to resolve Yandex public link to direct download URL"
@@ -135,6 +141,10 @@ resolve_download_url(){
       return 0
       ;;
     *)
+      if [[ -n "$public_path" ]]; then
+        echo "--encrypted-bundle-path is supported only with Yandex public links"
+        exit 1
+      fi
       printf '%s\n' "$url"
       return 0
       ;;
@@ -250,7 +260,7 @@ download_encrypted_bundle(){
   encrypted_file="$BUNDLE_TMP_DIR/recovery-bundle.tar.gz.gpg"
   decrypted_file="$BUNDLE_TMP_DIR/recovery-bundle.tar.gz"
 
-  fetch_url="$(resolve_download_url "$ENCRYPTED_BUNDLE_URL")"
+  fetch_url="$(resolve_download_url "$ENCRYPTED_BUNDLE_URL" "$ENCRYPTED_BUNDLE_PATH")"
   log "downloading encrypted recovery bundle from $ENCRYPTED_BUNDLE_URL"
   curl -fsSL "$fetch_url" -o "$encrypted_file"
   load_passphrase
@@ -319,6 +329,7 @@ parse_args(){
       --bundle-url) BUNDLE_URL="$2"; shift 2 ;;
       --mode) MODE="$2"; shift 2 ;;
       --encrypted-bundle-url) ENCRYPTED_BUNDLE_URL="$2"; shift 2 ;;
+      --encrypted-bundle-path) ENCRYPTED_BUNDLE_PATH="$2"; shift 2 ;;
       --snapshot-id) SNAPSHOT_ID="$2"; shift 2 ;;
       --bundle-passphrase) BUNDLE_PASSPHRASE="$2"; shift 2 ;;
       --bundle-passphrase-file) BUNDLE_PASSPHRASE_FILE="$2"; shift 2 ;;

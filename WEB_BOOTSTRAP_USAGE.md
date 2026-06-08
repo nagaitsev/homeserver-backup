@@ -83,7 +83,8 @@ sudo bash publish-recovery-bundle.sh \
 - берет recovery-файлы из `/etc` и `/usr/local/sbin`
 - берет `rclone.conf` из `/root/.config/rclone/rclone.conf`
 - грузит bundle в `yadisk:server_backup/recovery`
-- печатает готовую команду `curl | bash`
+- обновляет стабильный alias `recovery-bundle-latest.*`
+- печатает готовую команду `curl | bash` через публичную ссылку на папку
 
 Пример:
 
@@ -114,6 +115,18 @@ bash build-encrypted-recovery-bundle.sh \
 
 - `recovery-bundle.tar.gz.gpg`
 
+И что обновляется автоматически в remote:
+
+- `recovery-bundle-latest.tar.gz.gpg`
+- `recovery-bundle-latest.manifest.txt`
+- `recovery-bundle-latest.verify.txt`
+
+Идея:
+
+- timestamped bundle остается как исторический артефакт
+- stable alias перезаписывается
+- restore-команда может оставаться одной и той же
+
 Проверить результат можно так:
 
 ```bash
@@ -124,11 +137,12 @@ cat ./dist/recovery-bundle.verify.txt
 
 ### 1. Encrypted bundle на Яндексе
 
-Аварийное восстановление:
+Аварийное восстановление через стабильную ссылку на папку:
 
 ```bash
 curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
-  --encrypted-bundle-url "https://your-yandex-public-link.example/recovery-bundle.tar.gz.gpg" \
+  --encrypted-bundle-url "https://your-yandex-public-folder-link.example/" \
+  --encrypted-bundle-path "/recovery-bundle-latest.tar.gz.gpg" \
   --mode disaster
 ```
 
@@ -136,7 +150,8 @@ curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/<ref>/bootstrap.sh | sudo bash -s -- \
-  --encrypted-bundle-url "https://your-yandex-public-link.example/recovery-bundle.tar.gz.gpg" \
+  --encrypted-bundle-url "https://your-yandex-public-folder-link.example/" \
+  --encrypted-bundle-path "/recovery-bundle-latest.tar.gz.gpg" \
   --mode disaster
 ```
 
@@ -144,7 +159,8 @@ curl -fsSL https://raw.githubusercontent.com/<owner>/<repo>/<ref>/bootstrap.sh |
 
 ```bash
 curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
-  --encrypted-bundle-url "https://your-yandex-public-link.example/recovery-bundle.tar.gz.gpg" \
+  --encrypted-bundle-url "https://your-yandex-public-folder-link.example/" \
+  --encrypted-bundle-path "/recovery-bundle-latest.tar.gz.gpg" \
   --mode test \
   --test-ip 10.1.1.96
 ```
@@ -153,7 +169,8 @@ curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
 
 ```bash
 curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
-  --encrypted-bundle-url "https://your-yandex-public-link.example/recovery-bundle.tar.gz.gpg" \
+  --encrypted-bundle-url "https://your-yandex-public-folder-link.example/" \
+  --encrypted-bundle-path "/recovery-bundle-latest.tar.gz.gpg" \
   --mode disaster \
   --bundle-passphrase-file /root/recovery-passphrase.txt
 ```
@@ -186,6 +203,7 @@ curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
 3. Либо скачивает recovery-файлы по URL, либо скачивает encrypted bundle
 4. Для encrypted bundle:
    - спрашивает passphrase
+   - умеет брать файл как по прямой public-ссылке, так и по public-ссылке на папку Яндекса + пути к файлу
    - расшифровывает архив
    - раскладывает recovery-файлы по местам
 5. Проверяет `rclone.conf`
