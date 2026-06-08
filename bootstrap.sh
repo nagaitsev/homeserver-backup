@@ -250,6 +250,7 @@ install_from_bundle_dir(){
   fi
 
   if [[ -f "$src_dir/rclone.conf" ]]; then
+    mkdir -p "$(dirname "$RCLONE_CONF")"
     install -m 600 "$src_dir/rclone.conf" "$RCLONE_CONF"
   fi
 }
