@@ -1,0 +1,13 @@
+# Public repo only
+*.tar.gz
+*.tar.gz.gpg
+*.manifest.txt
+*.verify.txt
+/dist/
+
+# Secrets
+rclone.conf
+homeserver-backup.env
+*.passphrase
+*.secret
+.env
