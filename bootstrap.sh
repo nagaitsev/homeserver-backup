@@ -29,6 +29,12 @@ log(){
   echo "[$(date '+%F %T')] $*"
 }
 
+normalize_text_file(){
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  sed -i 's/\r$//' "$file"
+}
+
 usage(){
   cat <<'EOF'
 Usage:
@@ -197,6 +203,7 @@ download_bundle_from_urls(){
   download_file "$ENV_URL" "$ENV_FILE" 600
   download_file "$RESTORE_URL" "$RESTORE_SCRIPT" 700
   download_file "$BOOTSTRAP_RESTORE_URL" "$BOOTSTRAP_RESTORE_SCRIPT" 700
+  normalize_text_file "$ENV_FILE"
 
   if curl -fsSI "$EXCLUDES_URL" >/dev/null 2>&1; then
     download_file "$EXCLUDES_URL" "$EXCLUDES_FILE" 600
@@ -240,6 +247,7 @@ install_from_bundle_dir(){
   install -m 600 "$src_dir/homeserver-backup.env" "$ENV_FILE"
   install -m 700 "$src_dir/homeserver-restore.sh" "$RESTORE_SCRIPT"
   install -m 700 "$src_dir/homeserver-bootstrap-restore.sh" "$BOOTSTRAP_RESTORE_SCRIPT"
+  normalize_text_file "$ENV_FILE"
 
   if [[ -f "$src_dir/homeserver-backup.exclude" ]]; then
     install -m 600 "$src_dir/homeserver-backup.exclude" "$EXCLUDES_FILE"
@@ -252,6 +260,16 @@ install_from_bundle_dir(){
   if [[ -f "$src_dir/rclone.conf" ]]; then
     mkdir -p "$(dirname "$RCLONE_CONF")"
     install -m 600 "$src_dir/rclone.conf" "$RCLONE_CONF"
+  fi
+
+  if [[ -f "$src_dir/legacy-libssl.so.1.1" || -f "$src_dir/legacy-libcrypto.so.1.1" ]]; then
+    mkdir -p /opt/homeserver-recovery/lib
+  fi
+  if [[ -f "$src_dir/legacy-libssl.so.1.1" ]]; then
+    install -m 644 "$src_dir/legacy-libssl.so.1.1" /opt/homeserver-recovery/lib/legacy-libssl.so.1.1
+  fi
+  if [[ -f "$src_dir/legacy-libcrypto.so.1.1" ]]; then
+    install -m 644 "$src_dir/legacy-libcrypto.so.1.1" /opt/homeserver-recovery/lib/legacy-libcrypto.so.1.1
   fi
 }
 

@@ -99,6 +99,14 @@ stage_live_files(){
     install -m 600 /root/HOMESERVER_BACKUP_RESTORE.md "$LIVE_STAGE_DIR/HOMESERVER_BACKUP_RESTORE.md"
   fi
 
+  if [[ -f /usr/lib/x86_64-linux-gnu/libssl.so.1.1 ]]; then
+    install -m 644 /usr/lib/x86_64-linux-gnu/libssl.so.1.1 "$LIVE_STAGE_DIR/legacy-libssl.so.1.1"
+  fi
+
+  if [[ -f /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 ]]; then
+    install -m 644 /usr/lib/x86_64-linux-gnu/libcrypto.so.1.1 "$LIVE_STAGE_DIR/legacy-libcrypto.so.1.1"
+  fi
+
   SOURCE_DIR="$LIVE_STAGE_DIR"
 }
 

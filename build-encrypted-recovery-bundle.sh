@@ -106,6 +106,14 @@ stage_bundle_files(){
   if [[ -n "$RCLONE_CONF_SOURCE" ]]; then
     install -m 600 "$RCLONE_CONF_SOURCE" "$STAGING_DIR/rclone.conf"
   fi
+
+  if [[ -f "$SOURCE_DIR/legacy-libssl.so.1.1" ]]; then
+    install -m 644 "$SOURCE_DIR/legacy-libssl.so.1.1" "$STAGING_DIR/legacy-libssl.so.1.1"
+  fi
+
+  if [[ -f "$SOURCE_DIR/legacy-libcrypto.so.1.1" ]]; then
+    install -m 644 "$SOURCE_DIR/legacy-libcrypto.so.1.1" "$STAGING_DIR/legacy-libcrypto.so.1.1"
+  fi
 }
 
 build_bundle(){

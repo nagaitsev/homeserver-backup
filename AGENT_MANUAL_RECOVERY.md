@@ -23,6 +23,9 @@
 
 - `homeserver-backup.exclude`
 - `HOMESERVER_BACKUP_RESTORE.md`
+- bundled legacy libs:
+  - `legacy-libssl.so.1.1`
+  - `legacy-libcrypto.so.1.1`
 
 ## Где искать данные в Яндексе
 
@@ -145,6 +148,22 @@ systemctl status x-ui --no-pager
 docker ps
 ss -ltnp | grep -E '2053|10808|30001|22334|8443'
 ```
+
+Если Apache не поднимается, сначала проверить:
+
+```bash
+/www/server/apache/bin/httpd -t
+ls -ld /www/wwwlogs
+ldconfig -p | grep -E 'libssl.so.1.1|libcrypto.so.1.1|liblua5.1.so.0'
+```
+
+Новая схема recovery уже пытается сделать это сама:
+
+- убрать `CRLF` из `/etc/homeserver-backup.env`
+- создать `/www/wwwlogs`
+- поставить `liblua5.1-0`
+- подложить bundled `libssl.so.1.1` и `libcrypto.so.1.1`, если их нет в системе
+- стартовать `x-ui` после restore
 
 ## Что агент должен знать заранее
 
