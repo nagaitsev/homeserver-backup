@@ -13,7 +13,7 @@ STABLE_BUNDLE_BASENAME="recovery-bundle-latest"
 PASSPHRASE_FILE=""
 PASSPHRASE_VALUE="${BUNDLE_PASSPHRASE:-}"
 MODE_EXAMPLE="disaster"
-TEST_IP_EXAMPLE="10.1.1.96"
+TEST_IP_EXAMPLE="${TEST_IP_EXAMPLE:-}"
 
 LIVE_STAGE_DIR=""
 
@@ -38,7 +38,7 @@ Optional:
   --passphrase-file PATH        File containing gpg passphrase
   --passphrase VALUE            Passphrase directly (less safe in shell history)
   --mode-example MODE           Mode shown in the printed example command. Default: disaster
-  --test-ip-example IP          Test IP shown in printed example command. Default: 10.1.1.96
+  --test-ip-example IP          Test IP shown in the printed test command. Default: detected current host IP or TARGET_TEST_IP
   --help                        Show help
 EOF
 }
@@ -161,9 +161,31 @@ make_public_file_link(){
   rclone link "$remote_file" | tail -n 1
 }
 
+resolve_test_ip_example(){
+  if [[ -n "$TEST_IP_EXAMPLE" ]]; then
+    printf '%s\n' "$TEST_IP_EXAMPLE"
+    return 0
+  fi
+
+  if [[ -n "${RESTORE_TEST_TARGET_IP:-}" ]]; then
+    printf '%s\n' "$RESTORE_TEST_TARGET_IP"
+    return 0
+  fi
+
+  local detected_ip=""
+  detected_ip="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="src"){print $(i+1); exit}}')"
+  if [[ -n "$detected_ip" ]]; then
+    printf '%s\n' "$detected_ip"
+    return 0
+  fi
+
+  printf '%s\n' "TARGET_TEST_IP"
+}
+
 print_result(){
   local public_folder_link="$1"
   local public_file_link="$2"
+  local resolved_test_ip="$3"
 
   cat <<EOF
 
@@ -188,7 +210,7 @@ Restore command (${MODE_EXAMPLE}):
   curl -fsSL $PUBLIC_BOOTSTRAP_URL | sudo bash -s -- --encrypted-bundle-url \"$public_folder_link\" --encrypted-bundle-path \"/${STABLE_BUNDLE_BASENAME}.tar.gz.gpg\" --mode $MODE_EXAMPLE
 
 Restore command (test):
-  curl -fsSL $PUBLIC_BOOTSTRAP_URL | sudo bash -s -- --encrypted-bundle-url \"$public_folder_link\" --encrypted-bundle-path \"/${STABLE_BUNDLE_BASENAME}.tar.gz.gpg\" --mode test --test-ip $TEST_IP_EXAMPLE
+  curl -fsSL $PUBLIC_BOOTSTRAP_URL | sudo bash -s -- --encrypted-bundle-url \"$public_folder_link\" --encrypted-bundle-path \"/${STABLE_BUNDLE_BASENAME}.tar.gz.gpg\" --mode test --test-ip $resolved_test_ip
 
 Verification report:
   cat $OUTPUT_DIR/${BUNDLE_NAME}.verify.txt
@@ -212,7 +234,7 @@ main(){
   prepare_source
   build_bundle
   upload_artifacts
-  print_result "$(make_public_folder_link)" "$(make_public_file_link)"
+  print_result "$(make_public_folder_link)" "$(make_public_file_link)" "$(resolve_test_ip_example)"
 }
 
 main "$@"
