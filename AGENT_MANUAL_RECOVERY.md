@@ -33,6 +33,18 @@
 - `yadisk:server_backup/snapshots/<SNAPSHOT_ID>/`
 - `yadisk:server_backup/objects/<entity>/<fingerprint>.tar.zst`
 
+## Текущее рабочее состояние
+
+По состоянию на `2026-06-11`:
+
+- актуальный snapshot: читать из `yadisk:server_backup/LATEST`
+- последний полностью проверенный snapshot: `2026-06-09_20-00-31`
+- этот snapshot успешно прошел полный `test restore` на отдельной Ubuntu 22.04 машине
+- текущая retention-схема:
+  - локально хранится `1` последний snapshot
+  - на Яндексе хранятся `30` последних snapshot
+- старые snapshot удаляются в конце успешного backup, а не по отдельному таймеру
+
 ## Какой режим выбирать
 
 ### `disaster`
@@ -81,6 +93,14 @@ sudo install -m 600 homeserver-backup.exclude /etc/homeserver-backup.exclude
 sudo install -m 600 HOMESERVER_BACKUP_RESTORE.md /root/HOMESERVER_BACKUP_RESTORE.md
 ```
 
+Если есть bundled legacy libs:
+
+```bash
+sudo install -d -m 755 /opt/homeserver-recovery/lib
+sudo install -m 644 legacy-libssl.so.1.1 /opt/homeserver-recovery/lib/legacy-libssl.so.1.1
+sudo install -m 644 legacy-libcrypto.so.1.1 /opt/homeserver-recovery/lib/legacy-libcrypto.so.1.1
+```
+
 ### 3. Проверить доступ к Яндексу
 
 ```bash
@@ -107,7 +127,7 @@ sudo sed -i 's/^RESTORE_TEST_TARGET_IP=.*/RESTORE_TEST_TARGET_IP=""/' /etc/homes
 
 ```bash
 sudo sed -i 's/^RESTORE_MODE=.*/RESTORE_MODE="test"/' /etc/homeserver-backup.env
-sudo sed -i 's/^RESTORE_TEST_TARGET_IP=.*/RESTORE_TEST_TARGET_IP="10.1.1.96"/' /etc/homeserver-backup.env
+sudo sed -i 's/^RESTORE_TEST_TARGET_IP=.*/RESTORE_TEST_TARGET_IP="TEST_MACHINE_IP"/' /etc/homeserver-backup.env
 ```
 
 ### 6. Узнать snapshot
@@ -137,7 +157,7 @@ sudo /usr/local/sbin/homeserver-bootstrap-restore.sh "" test
 Конкретный snapshot:
 
 ```bash
-sudo /usr/local/sbin/homeserver-bootstrap-restore.sh 2026-06-08_03-45-05 disaster
+sudo /usr/local/sbin/homeserver-bootstrap-restore.sh <SNAPSHOT_ID> disaster
 ```
 
 ### 8. Проверка после восстановления
@@ -164,6 +184,7 @@ ldconfig -p | grep -E 'libssl.so.1.1|libcrypto.so.1.1|liblua5.1.so.0'
 - поставить `liblua5.1-0`
 - подложить bundled `libssl.so.1.1` и `libcrypto.so.1.1`, если их нет в системе
 - стартовать `x-ui` после restore
+- корректно остановить и поднять `Apache`, `pure-ftpd`, `aaPanel`, `mtg`
 
 ## Что агент должен знать заранее
 
@@ -172,7 +193,7 @@ ldconfig -p | grep -E 'libssl.so.1.1|libcrypto.so.1.1|liblua5.1.so.0'
 Нужно знать:
 
 - `PRIMARY_SERVICE_IP`
-- текущий IP тестовой машины
+- текущий IP тестовой машины, например `192.168.230.132`
 
 ### В disaster mode
 

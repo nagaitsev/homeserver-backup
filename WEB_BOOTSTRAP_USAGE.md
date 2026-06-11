@@ -21,6 +21,9 @@
 - `homeserver-bootstrap-restore.sh`
 - `homeserver-backup.exclude`
 - `HOMESERVER_BACKUP_RESTORE.md`
+- bundled legacy libs for Apache compatibility when available:
+  - `legacy-libssl.so.1.1`
+  - `legacy-libcrypto.so.1.1`
 - опционально `rclone.conf`
 
 ## Вариант 2. Публичный bootstrap + открытый/закрытый набор файлов по URL
@@ -53,12 +56,23 @@
 
 - даже если URL утечет, без passphrase архив бесполезен
 
+## Текущее рабочее состояние
+
+По состоянию на `2026-06-11`:
+
+- backup-схема рабочая и проверена полным `test restore`
+- последний полностью проверенный snapshot: `2026-06-09_20-00-31`
+- текущая retention-схема:
+  - локально `1` snapshot
+  - remote `30` snapshot
+- старые snapshot удаляются в конце успешного backup
+
 ## Сборка encrypted bundle
 
 Используй:
 
-- [build-encrypted-recovery-bundle.sh](C:\Users\BEST_USER\Documents\Codex\2026-05-29\ssh\build-encrypted-recovery-bundle.sh)
-- [publish-recovery-bundle.sh](C:\Users\BEST_USER\Documents\Codex\2026-05-29\ssh\publish-recovery-bundle.sh)
+- [`build-encrypted-recovery-bundle.sh`](./build-encrypted-recovery-bundle.sh)
+- [`publish-recovery-bundle.sh`](./publish-recovery-bundle.sh)
 
 ### Вариант “одной командой”
 
@@ -162,7 +176,7 @@ curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
   --encrypted-bundle-url "https://your-yandex-public-folder-link.example/" \
   --encrypted-bundle-path "/recovery-bundle-latest.tar.gz.gpg" \
   --mode test \
-  --test-ip 10.1.1.96
+  --test-ip TEST_MACHINE_IP
 ```
 
 Если не хочешь вводить passphrase руками:
@@ -192,7 +206,7 @@ curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
 curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
   --bundle-url https://your-domain.example/recovery \
   --mode test \
-  --test-ip 10.1.1.96 \
+  --test-ip TEST_MACHINE_IP \
   --rclone-conf-url https://your-domain.example/recovery/rclone.conf
 ```
 
@@ -206,10 +220,20 @@ curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
    - умеет брать файл как по прямой public-ссылке, так и по public-ссылке на папку Яндекса + пути к файлу
    - расшифровывает архив
    - раскладывает recovery-файлы по местам
+   - раскладывает bundled legacy libs в `/opt/homeserver-recovery/lib`, если они есть
 5. Проверяет `rclone.conf`
 6. Записывает `RESTORE_MODE`
 7. Для `test` записывает `RESTORE_TEST_TARGET_IP`
 8. Запускает `homeserver-bootstrap-restore.sh`
+
+После старта restore-скрипты дополнительно умеют:
+
+- нормализовать `CRLF` в `/etc/homeserver-backup.env`
+- отключать сломанный `NodeSource`, если он ломает `apt update`
+- создавать `/www/wwwlogs`
+- ставить `liblua5.1-0`
+- подложить `libssl.so.1.1` и `libcrypto.so.1.1`, если они приехали в bundle
+- корректно останавливать и поднимать `x-ui`, `Apache`, `pure-ftpd`, `aaPanel`, `mtg`
 
 ## Что bootstrap.sh не делает магически
 
@@ -240,7 +264,7 @@ curl -fsSL https://your-domain.example/recovery/bootstrap.sh | sudo bash -s -- \
 
 Если не хочешь использовать encrypted bundle, но готов сам дать агенту доступ к Яндексу и к инструкции, используй:
 
-- [AGENT_MANUAL_RECOVERY.md](C:\Users\BEST_USER\Documents\Codex\2026-05-29\ssh\AGENT_MANUAL_RECOVERY.md)
+- [`AGENT_MANUAL_RECOVERY.md`](./AGENT_MANUAL_RECOVERY.md)
 
 Это запасной сценарий:
 
